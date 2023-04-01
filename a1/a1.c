@@ -83,6 +83,7 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
                 //printf("%d",numberOctal);
                 if(strncmp(name_start_with,entry->d_name,strlen(name_start_with))==0 && (modeOctal == numberOctal || numberOctal == 0)){
                     k++;
+                    //printf("%s\n",name_start_with);
                     //printf("aici");
                     printf("%s\n",fullPath);
                 }
@@ -104,33 +105,17 @@ char *name_start_with = "";
 char *permissions ="";
 char *recursive = "";
 char *path ="";
+char* list="";
 int main(int argc, char **argv){
     //printf("%d",argc);
     if(argc >= 2){
         if(strcmp(argv[1], "variant") == 0){
             printf("21546\n");
         }
-        if(strncmp(argv[1],"list",4) == 0){
-            if(argc == 3){
-                if(strstr(argv[2],"path=")!=NULL){
-                    path = argv[2]+5;
-                }
-                if(opendir(path) == NULL){
-                printf("ERROR \n invalid directory path");
-                }else{
-                /*printf("%s",path);
-                printf("%s",permissions);
-                printf("%s",recursive);
-                printf("%s",name_start_with);
-                */
-                printf("SUCCES \n");
-                listDir(path,recursive,name_start_with,permissions);
-                }      
-            }else{
-            if(argc==4){
-                for(int i = 2 ;i<=3;i++){
-                    if(strstr(argv[i],"name_start_with=")!=NULL){
-                    name_start_with = argv[i]+16;
+        else{
+        for(int i = 1;i<argc; i++){
+                if(strstr(argv[i],"name_starts_with=")!=NULL){
+                    name_start_with = argv[i]+17;
                 }
                 if(strstr(argv[i],"path=")!=NULL){
                     path = argv[i]+5;
@@ -141,58 +126,19 @@ int main(int argc, char **argv){
                 if(strcmp(argv[i],"recursive")==0){
                     recursive="recursive";
                 }
+                if(strcmp(argv[i],"list")==0){
+                    list="list";
                 }
-            }else{
-            if(argc == 5){
-            for(int i=2;i<=4;i++){
-                if(strstr(argv[i],"name_start_with=")!=NULL){
-                    name_start_with = argv[i]+16;
-                }
-                if(strstr(argv[i],"path=")!=NULL){
-                    path = argv[i]+5;
-                }
-                if(strstr(argv[i],"permissions=")!=NULL){
-                   permissions=argv[i]+12;
-                }
-                if(strcmp(argv[i],"recursive")==0){
-                    recursive="recursive";
-                }
-            }
-            }else {
-                if(argc == 6){
-                for(int i=2;i<=5;i++){
-                if(strstr(argv[i],"name_start_with=")!=NULL){
-                    name_start_with = argv[i]+16;
-                }
-                if(strstr(argv[i],"path=")!=NULL){
-                    path = argv[i]+5;
-                }
-                if(strstr(argv[i],"permissions=")!=NULL){
-                   permissions=argv[i]+12;
-                }
-                if(strcmp(argv[i],"recursive")==0){
-                    recursive="recursive";
-                }
-                }
-            }    
-            }
-            }
+        }
+        if(list != NULL){
             if(opendir(path) == NULL){
                 printf("ERROR \n invalid directory path");
             }else{
-                //printf("%s",permissions);
-                //printf("%s",path);
-                /*printf("%s",path);
-                printf("%s",permissions);
-                printf("%s",recursive);
-                printf("%s",name_start_with);
-                */
-                printf("SUCCES \n");
+                printf("SUCCESS \n");
                 listDir(path,recursive,name_start_with,permissions);
             } 
-            }
-                      
         }
-    }
+        }
+    }        
     return 0;
 }
