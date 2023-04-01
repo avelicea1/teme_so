@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int listDir(const char *path, const char *recursive,const char *name_start_with, const char *permissions ){
+int listDir(const char *path, const char *recursive,const char *name_start_with, const char *permissions,int *k ){
     DIR *dir = NULL;
     struct dirent *entry = NULL;
     char fullPath[512];
@@ -13,12 +13,10 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
     dir = opendir (path);
     long number = 0;
     int numberOctal = 0;
-    int k=0;
     if(dir == NULL){
         perror("Could not open dir");
         return -1;
     }
-    //printf("%ld",strlen(permissions));
     for(int i=0;i<9 && strlen(permissions) > 0;i++){
         if(permissions[i]=='r'||permissions[i]=='w'||permissions[i]=='x'){
             number=number+1;
@@ -41,7 +39,6 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
         numberOctal = numberOctal +( decimal % 8)*i;
         decimal = decimal/8;
     }
-    //printf("%d",numberOctal);
     while((entry = readdir(dir))!=NULL){
         
         if(strcmp(recursive,"recursive")==0){
@@ -54,7 +51,6 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
                         modeOctal = modeOctal +(mode % 8)*i;
                         mode = mode/8;
                     }   
-                    
                     if(strncmp(name_start_with,entry->d_name,strlen(name_start_with))==0 && (modeOctal == numberOctal||numberOctal ==0)){
                     k++;
                     printf("%s\n",fullPath);
@@ -72,32 +68,19 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
             if(lstat(fullPath,&statbuf)==0){
                 int mode = statbuf.st_mode & 0777;
                 int modeOctal =0;
-                //printf(" %o \n",statbuf.st_mode& 0777);
                 for(int i=1; mode!=0; i=i*10){
                     modeOctal = modeOctal +(mode % 8)*i;
                     mode = mode/8;
                 }
-
-                //printf("%d ",modeOctal);
-                //printf("%d",strncmp(name_start_with,entry->d_name,strlen(name_start_with)));
-                //printf("%d",numberOctal);
                 if(strncmp(name_start_with,entry->d_name,strlen(name_start_with))==0 && (modeOctal == numberOctal || numberOctal == 0)){
                     k++;
-                    //printf("%s\n",name_start_with);
-                    //printf("aici");
                     printf("%s\n",fullPath);
                 }
                 
             }
         }
         }
-        /*if(strncmp(name_start_with,entry->d_name,strlen(name_start_with))==0 ){
-            k++;
-            printf("%s/%s\n",path,entry->d_name);
-        }*/
-        
     }
-    if(k==0)return k;
     closedir(dir);
     return 0;
 }
@@ -106,8 +89,8 @@ char *permissions ="";
 char *recursive = "";
 char *path ="";
 char* list="";
+int k=0;
 int main(int argc, char **argv){
-    //printf("%d",argc);
     if(argc >= 2){
         if(strcmp(argv[1], "variant") == 0){
             printf("21546\n");
@@ -131,12 +114,16 @@ int main(int argc, char **argv){
                 }
         }
         if(list != NULL){
-            if(opendir(path) == NULL){
-                printf("ERROR \n invalid directory path");
+            if(strcmp(path,"")!=0){
+                if(opendir(path) == NULL){
+                    printf("ERROR \ninvalid directory path");
+                }else{
+                    printf("SUCCESS \n");
+                    listDir(path,recursive,name_start_with,permissions,&k);
+                } 
             }else{
-                printf("SUCCESS \n");
-                listDir(path,recursive,name_start_with,permissions);
-            } 
+                printf("ERROR \npath is NULL");
+            }
         }
         }
     }        
