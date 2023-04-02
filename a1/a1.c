@@ -85,7 +85,116 @@ int listDir(const char *path, int recursive,const char *name_start_with, const c
     closedir(dir);
     return 0;
 }
-
+struct sectionHeader{
+    char name[15];
+    int sect_type;
+    int sect_offset;
+    int sect_size;
+}sectionHeader;
+int parse (const char *path){
+    int fd = open(path,O_RDONLY);
+    if(fd==-1){
+        printf("ERROR \n invalid path");
+        return -1;
+    }
+    lseek(fd,-1,SEEK_END);
+    char magic;
+    if(read(fd,&magic,1)==1){
+        if(magic != 'l'){
+            printf("ERROR \nwrong magic");
+            return -1;
+        }
+    }
+    if(magic =='l'){
+        
+        lseek(fd,-3,SEEK_END);
+        int headerSize = 0;
+        if(read(fd,&headerSize,2)!=2){
+            perror("could not read size");
+        }
+        lseek(fd,-headerSize,SEEK_END);
+        unsigned char c;
+        int version =0;
+        int nrSections =0;
+        if(read(fd,& c,1)!=1){
+            perror("could not read version!");
+        }
+        version=c;
+        if(read(fd,&nrSections,1)!=1){
+            perror("could not read no_of_sections!");
+        }
+        struct sectionHeader **sectionsHeaders =(struct sectionHeader **)malloc(sizeof(struct sectionHeader)*nrSections); 
+        for(int i = 1;i<=nrSections;i++){
+            sectionsHeaders[i] = (struct sectionHeader*)malloc(sizeof(struct sectionHeader));
+        }
+        if(version >=38 && version <=126){
+            if(nrSections >= 3 && nrSections <= 19){
+                for(int i=1;i<=nrSections ;i++){
+                    char name[14];
+                    if(read(fd,&name,14)!=14){
+                        perror("could not read name");
+                    }
+                    strcpy(sectionsHeaders[i]->name,name);
+                    int sect_type = 0;
+                    if(read(fd,&sect_type,2)!=2){
+                        perror("could not read sect_type");
+                    }
+                    sectionsHeaders[i]->sect_type=sect_type;
+                    if(sect_type == 60 || sect_type == 75 || sect_type == 91){
+                        int sect_offset = 0;
+                        if(read(fd,&sect_offset,4)!=4){
+                            perror("could not read sect_offset");
+                        }
+                        sectionsHeaders[i]->sect_offset=sect_offset;
+                        //printf("%d\n",sect_offset);
+                        int sect_size = 0;
+                        if(read(fd,&sect_size,4)!=4){
+                            perror("could not read sect_size");
+                        }
+                        sectionsHeaders[i]->sect_size = sect_size;
+                    }else{
+                        printf("ERROR \nwrong sect_types");
+                        for(int i=1;i<=nrSections;i++){
+                            free(sectionsHeaders[i]);
+                        }
+                        free(sectionsHeaders);
+                        return -1;
+                    }
+                }
+            }else{
+                printf("ERROR \nwrong sect_nr");
+                for(int i=1;i<=nrSections;i++){
+                    free(sectionsHeaders[i]);
+                }
+                free(sectionsHeaders);
+                return -1;
+            }
+        }else{
+            printf("ERROR \nwrong version");
+            for(int i=1;i<=nrSections;i++){
+                free(sectionsHeaders[i]);
+            }
+            free(sectionsHeaders);
+            return -1;
+        }
+        printf("SUCCESS\n");
+        printf("version=%d\n",version);
+        printf("nr_sections=%d\n",nrSections);
+        for(int i=1;i<=nrSections;i++){
+            printf("section%d: ",i);
+            printf("%s ",sectionsHeaders[i]->name);
+            printf("%d ",sectionsHeaders[i]->sect_type);
+            printf("%d",sectionsHeaders[i]->sect_size);
+            printf("\n");
+        }
+        for(int i=1;i<=nrSections;i++){
+            free(sectionsHeaders[i]);
+        }
+        free(sectionsHeaders);
+    }
+    close(fd);
+    return 0;
+}
 int main(int argc, char **argv){
     char name_start_with[512]="";
     char permissions[10]="";
@@ -125,6 +234,7 @@ int main(int argc, char **argv){
                     printf("ERROR \ninvalid directory path");
                 }else{
                     printf("SUCCESS \n");
+                    
                     listDir(path,r,name_start_with,permissions,&k);
                     closedir(dir);
                 } 
@@ -133,34 +243,7 @@ int main(int argc, char **argv){
             }
         }
         if(p!=0){
-            int fd = open(path,O_RDONLY);
-            if(fd==-1){
-                printf("ERROR \n invalid path");
-                
-                return -1;
-            }
-            lseek(fd,-1,SEEK_END);
-            char magic;
-            if(read(fd,&magic,1)==1){
-                if(magic == 'l'){
-                    printf("SUCCES\n");
-                }else{
-                    printf("ERROR \nwrong magic");
-                }
-            }
-            close(fd);
-            /*lseek(fd,-3,SEEK_END);
-            int headerSize = 0;
-            
-            if(read(fd,&headerSize,2)==2){
-                printf("\nsize : %d",headerSize);
-            }
-            lseek(fd,0,SEEK_SET);
-            char version;
-            if(read(fd,&version,1)==1){
-                printf("version=%d",version);
-            }*/
-            close(fd);
+            parse(path);
         }
         }
     } 
