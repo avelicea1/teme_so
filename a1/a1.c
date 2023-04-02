@@ -4,8 +4,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 
-int listDir(const char *path, const char *recursive,const char *name_start_with, const char *permissions,int *k ){
+int listDir(const char *path, const char *recursive,const char *name_start_with, const char *permissions,int *k){
     DIR *dir = NULL;
     struct dirent *entry = NULL;
     char fullPath[512];
@@ -52,12 +53,12 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
                         mode = mode/8;
                     }   
                     if(strncmp(name_start_with,entry->d_name,strlen(name_start_with))==0 && (modeOctal == numberOctal||numberOctal ==0)){
-                    k++;
+                    (*k)++;
                     printf("%s\n",fullPath);
                     }
                     if(S_ISDIR(statbuf.st_mode)){
                         
-                        listDir(fullPath,recursive,name_start_with,permissions);
+                        listDir(fullPath,recursive,name_start_with,permissions,k);
                     }
                 }
             }
@@ -73,7 +74,7 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
                     mode = mode/8;
                 }
                 if(strncmp(name_start_with,entry->d_name,strlen(name_start_with))==0 && (modeOctal == numberOctal || numberOctal == 0)){
-                    k++;
+                    (*k)++;
                     printf("%s\n",fullPath);
                 }
                 
@@ -90,6 +91,7 @@ char *recursive = "";
 char *path ="";
 char* list="";
 int k=0;
+char *parse="";
 int main(int argc, char **argv){
     if(argc >= 2){
         if(strcmp(argv[1], "variant") == 0){
@@ -112,8 +114,11 @@ int main(int argc, char **argv){
                 if(strcmp(argv[i],"list")==0){
                     list="list";
                 }
+                if(strcmp(argv[i],"parse")==0){
+                    parse="parse";
+                }
         }
-        if(list != NULL){
+        if(strcmp(list,"")!=0){
             if(strcmp(path,"")!=0){
                 if(opendir(path) == NULL){
                     printf("ERROR \ninvalid directory path");
@@ -124,6 +129,34 @@ int main(int argc, char **argv){
             }else{
                 printf("ERROR \npath is NULL");
             }
+        }
+        if(strcmp(parse,"")!=0){
+            int fd = open(path,O_RDONLY);
+            if(fd==-1){
+                printf("ERROR \n invalid path");
+                return -1;
+            }
+            lseek(fd,-1,SEEK_END);
+            char magic;
+            if(read(fd,&magic,1)==1){
+                if(magic == 'l'){
+                    printf("SUCCES\n");
+                }else{
+                    printf("ERROR \nwrong magic");
+                }
+            }
+            /*lseek(fd,-3,SEEK_END);
+            int headerSize = 0;
+            
+            if(read(fd,&headerSize,2)==2){
+                printf("\nsize : %d",headerSize);
+            }
+            lseek(fd,0,SEEK_SET);
+            char version;
+            if(read(fd,&version,1)==1){
+                printf("version=%d",version);
+            }*/
+            close(fd);
         }
         }
     }        
