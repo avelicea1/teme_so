@@ -16,6 +16,7 @@ int listDir(const char *path, int recursive,const char *name_start_with, const c
     long number = 0;
     int numberOctal = 0;
     if(dir == NULL){
+        closedir(dir);
         perror("Could not open dir");
         return -1;
     }
@@ -42,7 +43,6 @@ int listDir(const char *path, int recursive,const char *name_start_with, const c
         decimal = decimal/8;
     }
     while((entry = readdir(dir))!=NULL){
-        
         if(recursive==1){
             if(strcmp(entry->d_name,".")!=0 && strcmp(entry->d_name,"..")!=0){
                 snprintf(fullPath,512,"%s/%s",path, entry->d_name);
@@ -58,7 +58,6 @@ int listDir(const char *path, int recursive,const char *name_start_with, const c
                     printf("%s\n",fullPath);
                     }
                     if(S_ISDIR(statbuf.st_mode)){
-                        
                         listDir(fullPath,recursive,name_start_with,permissions,k);
                     }
                 }
@@ -120,11 +119,14 @@ int main(int argc, char **argv){
         }
         if(l!=0){
             if(strcmp(path,"")!=0){
-                if(opendir(path) == NULL){
+                DIR *dir = opendir(path);
+                if(dir == NULL){
+                    closedir(dir);
                     printf("ERROR \ninvalid directory path");
                 }else{
                     printf("SUCCESS \n");
                     listDir(path,r,name_start_with,permissions,&k);
+                    closedir(dir);
                 } 
             }else{
                 printf("ERROR \npath is NULL");
