@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-int listDir(const char *path, const char *recursive,const char *name_start_with, const char *permissions,int *k){
+int listDir(const char *path, int recursive,const char *name_start_with, const char *permissions,int *k){
     DIR *dir = NULL;
     struct dirent *entry = NULL;
     char fullPath[512];
@@ -42,7 +43,7 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
     }
     while((entry = readdir(dir))!=NULL){
         
-        if(strcmp(recursive,"recursive")==0){
+        if(recursive==1){
             if(strcmp(entry->d_name,".")!=0 && strcmp(entry->d_name,"..")!=0){
                 snprintf(fullPath,512,"%s/%s",path, entry->d_name);
                 if(lstat(fullPath,&statbuf)==0){
@@ -85,14 +86,13 @@ int listDir(const char *path, const char *recursive,const char *name_start_with,
     closedir(dir);
     return 0;
 }
-char *name_start_with = "";
-char *permissions ="";
-char *recursive = "";
-char *path ="";
-char* list="";
-int k=0;
-char *parse="";
+
 int main(int argc, char **argv){
+    char name_start_with[512]="";
+    char permissions[10]="";
+    char path[512]="";
+    int k=0;
+    int r = 0, l =0, p =0;
     if(argc >= 2){
         if(strcmp(argv[1], "variant") == 0){
             printf("21546\n");
@@ -100,40 +100,41 @@ int main(int argc, char **argv){
         else{
         for(int i = 1;i<argc; i++){
                 if(strstr(argv[i],"name_starts_with=")!=NULL){
-                    name_start_with = argv[i]+17;
+                    strcpy(name_start_with,argv[i]+17);
                 }
                 if(strstr(argv[i],"path=")!=NULL){
-                    path = argv[i]+5;
+                    strcpy(path, argv[i]+5);
                 }
                 if(strstr(argv[i],"permissions=")!=NULL){
-                   permissions=argv[i]+12;
+                   strcpy(permissions,argv[i]+12);
                 }
                 if(strcmp(argv[i],"recursive")==0){
-                    recursive="recursive";
+                    r=1;
                 }
                 if(strcmp(argv[i],"list")==0){
-                    list="list";
+                    l=1;
                 }
                 if(strcmp(argv[i],"parse")==0){
-                    parse="parse";
+                    p=1;
                 }
         }
-        if(strcmp(list,"")!=0){
+        if(l!=0){
             if(strcmp(path,"")!=0){
                 if(opendir(path) == NULL){
                     printf("ERROR \ninvalid directory path");
                 }else{
                     printf("SUCCESS \n");
-                    listDir(path,recursive,name_start_with,permissions,&k);
+                    listDir(path,r,name_start_with,permissions,&k);
                 } 
             }else{
                 printf("ERROR \npath is NULL");
             }
         }
-        if(strcmp(parse,"")!=0){
+        if(p!=0){
             int fd = open(path,O_RDONLY);
             if(fd==-1){
                 printf("ERROR \n invalid path");
+                
                 return -1;
             }
             lseek(fd,-1,SEEK_END);
@@ -145,6 +146,7 @@ int main(int argc, char **argv){
                     printf("ERROR \nwrong magic");
                 }
             }
+            close(fd);
             /*lseek(fd,-3,SEEK_END);
             int headerSize = 0;
             
@@ -159,7 +161,8 @@ int main(int argc, char **argv){
             close(fd);
         }
         }
-    }        
+    } 
+    
     return 0;
     
 }
