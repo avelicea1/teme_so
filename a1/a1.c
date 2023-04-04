@@ -542,6 +542,15 @@ int extract(const char *path, int section, int line)
                                 }
                                 copielinieString[k]=0;
                                 printf("%s",copielinieString);
+                                free(copielinieString);
+                                for (int s = 1; s <= nrSections; s++)
+                                            {
+                                                free(sectionsHeaders[s]);
+                                            }
+                                            free(sectionsHeaders);
+                                            free(buff);
+                                            free(linieString);
+                                            return 1;
                             }
                             
                             //printf("%c",buff[sectionsHeaders[i]->sect_size]);
