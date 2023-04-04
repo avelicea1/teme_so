@@ -461,8 +461,10 @@ int extract(const char *path, int section, int line)
                             // printf("linia 1:");
                             //  printf("size = %d\n",sectionsHeaders[i]->sect_size);
                             int j=0;
-                            int line_nr = 0;
+                            int line_nr = 1;
                             int poz_inceput = 0;
+                            int n=0;
+                            //int copie_poz_inceput =0;
                             while (j <= sectionsHeaders[i]->sect_size)
                             {
                                 // printf("BUN");
@@ -472,11 +474,13 @@ int extract(const char *path, int section, int line)
                                     // printf("poz inceput %d\n",poz_inceput);
                                     // printf("lungime linie %d\n",j-poz_inceput-1);
                                     //printf("%c", buff[j]);
-                                    if (j>0 && (int)buff[j] == 0x0A && (int)buff[j - 1] == 0x0D)
+                                    
+                                    if (j>0 && (int)buff[j] == 0x0A && (int)buff[j - 1] == 0x0D )
                                     {
-                                        line_nr++;
+                                        //printf("%d %d \n",j,sectionsHeaders[i]->sect_size);
                                         if (line_nr == line)
                                         {
+                                            
                                             //printf("%d ",j);
                                             //printf("%d ",poz_inceput);
                                             //printf("%d ",j-poz_inceput);
@@ -494,25 +498,53 @@ int extract(const char *path, int section, int line)
                                                 //copielinieString[n] = linieString [j-poz_inceput-n-1];
                                             //}
                                             //copielinieString[j-poz_inceput]=0;
-                                            int n=0;
+                                            n=0;
                                             for(int m = j-1;m>=poz_inceput;m--){
                                                 linieString[n++]=buff[m];
                                             }
                                             linieString[n]=0;
                                             printf("%s",linieString);
+                                            for (int s = 1; s <= nrSections; s++)
+                                            {
+                                                free(sectionsHeaders[s]);
+                                            }
+                                            free(sectionsHeaders);
+                                            free(buff);
+                                            free(linieString);
                                             return 0;
                                         }
                                         // strrev(linieString);
-
-                                        
+                                        //printf("%d",line_nr);
+                                        line_nr++;
+                                        //copie_poz_inceput = poz_inceput;
                                         poz_inceput = j + 1;
                                         // printf("\nlinie noua\n");
                                         // printf("\n");
                                         // printf("linia %d:",line_nr);
+                                    }else{
+                                        
+                                        if(line_nr == line){
+                                            
+                                            linieString[n++]=buff[j];
+                                        }
                                     }
                                 }
                                 j++;
                             }
+                            if(line_nr == line){
+                                printf("SUCCESS\n");
+                                char *copielinieString = (char *)malloc((sectionsHeaders[i]->sect_size + 1) * sizeof(char));
+                                int k=0;
+                                //printf("%d",strlen(linieString));
+                                printf("%c",linieString[strlen(linieString)-1]);
+                                for(int i=strlen(linieString)-2;i>=0;i--){
+                                    copielinieString[k++]=linieString[i];
+                                }
+                                copielinieString[k]=0;
+                                printf("%s",copielinieString);
+                            }
+                            
+                            //printf("%c",buff[sectionsHeaders[i]->sect_size]);
                             //printf("lungime_linie = %d \n", lungime_linie);
                             // printf("%ld", seek_cur);
                              //printf("nr linii= %d\n", line_nr);
