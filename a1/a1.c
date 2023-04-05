@@ -22,6 +22,10 @@ int listDir(const char *path, int recursive, const char *name_start_with, const 
         perror("Could not open dir");
         return -1;
     }
+    if (*k == 0)
+    {
+        printf("SUCCESS\n");
+    }
     for (int i = 0; i < 9 && strlen(permissions) > 0; i++)
     {
         if (permissions[i] == 'r' || permissions[i] == 'w' || permissions[i] == 'x')
@@ -113,12 +117,13 @@ struct sectionHeader
     int sect_offset;
     int sect_size;
 } sectionHeader;
-int parse(const char *path)
+int parse(const char *path,int *k)
 {
     int fd = open(path, O_RDONLY);
     if (fd == -1)
     {
         printf("ERROR \n invalid path");
+        close(fd);
         return -1;
     }
     lseek(fd, -1, SEEK_END);
@@ -128,6 +133,7 @@ int parse(const char *path)
         if (magic != 'l')
         {
             printf("ERROR \nwrong magic");
+            close(fd);
             return -1;
         }
     }
@@ -139,6 +145,8 @@ int parse(const char *path)
         if (read(fd, &headerSize, 2) != 2)
         {
             perror("could not read size");
+            close(fd);
+            return -1;
         }
         lseek(fd, -headerSize, SEEK_END);
         unsigned char c;
@@ -147,11 +155,15 @@ int parse(const char *path)
         if (read(fd, &c, 1) != 1)
         {
             perror("could not read version!");
+            close(fd);
+            return -1;
         }
         version = c;
         if (read(fd, &nrSections, 1) != 1)
         {
             perror("could not read no_of_sections!");
+            close(fd);
+            return -1;
         }
         struct sectionHeader **sectionsHeaders = (struct sectionHeader **)malloc(sizeof(struct sectionHeader) * nrSections);
         for (int i = 1; i <= nrSections; i++)
@@ -168,6 +180,13 @@ int parse(const char *path)
                     if (read(fd, &name, 14) != 14)
                     {
                         printf("could not read name");
+                        for (int i = 1; i <= nrSections; i++)
+                        {
+                            free(sectionsHeaders[i]);
+                        }
+                        free(sectionsHeaders);
+                        close(fd);
+                        return -1;
                     }
                     strcpy(sectionsHeaders[i]->name, name);
                     sectionsHeaders[i]->name[14] = 0;
@@ -175,6 +194,13 @@ int parse(const char *path)
                     if (read(fd, &sect_type, 2) != 2)
                     {
                         printf("could not read sect_type");
+                        for (int i = 1; i <= nrSections; i++)
+                        {
+                            free(sectionsHeaders[i]);
+                        }
+                        free(sectionsHeaders);
+                        close(fd);
+                        return -1;
                     }
                     sectionsHeaders[i]->sect_type = 0;
                     sectionsHeaders[i]->sect_type = sect_type;
@@ -184,6 +210,13 @@ int parse(const char *path)
                         if (read(fd, &sect_offset, 4) != 4)
                         {
                             printf("could not read sect_offset");
+                            for (int i = 1; i <= nrSections; i++)
+                            {
+                                free(sectionsHeaders[i]);
+                            }
+                            free(sectionsHeaders);
+                            close(fd);
+                            return -1;
                         }
                         sectionsHeaders[i]->sect_offset = 0;
                         sectionsHeaders[i]->sect_offset = sect_offset;
@@ -192,6 +225,13 @@ int parse(const char *path)
                         if (read(fd, &sect_size, 4) != 4)
                         {
                             printf("could not read sect_size");
+                            for (int i = 1; i <= nrSections; i++)
+                            {
+                                free(sectionsHeaders[i]);
+                            }
+                            free(sectionsHeaders);
+                            close(fd);
+                            return -1;
                         }
                         sectionsHeaders[i]->sect_size = 0;
                         sectionsHeaders[i]->sect_size = sect_size;
@@ -204,6 +244,7 @@ int parse(const char *path)
                             free(sectionsHeaders[i]);
                         }
                         free(sectionsHeaders);
+                        close(fd);
                         return -1;
                     }
                 }
@@ -216,6 +257,7 @@ int parse(const char *path)
                     free(sectionsHeaders[i]);
                 }
                 free(sectionsHeaders);
+                close(fd);
                 return -1;
             }
         }
@@ -227,11 +269,15 @@ int parse(const char *path)
                 free(sectionsHeaders[i]);
             }
             free(sectionsHeaders);
+            close(fd);
             return -1;
         }
+        if(*k == 0){
         printf("SUCCESS\n");
         printf("version=%d\n", version);
         printf("nr_sections=%d\n", nrSections);
+        *k=1;
+        }
         for (int i = 1; i <= nrSections; i++)
         {
             printf("section%d: ", i);
@@ -245,6 +291,8 @@ int parse(const char *path)
             free(sectionsHeaders[i]);
         }
         free(sectionsHeaders);
+        close(fd);
+        return 0;
     }
     close(fd);
     return 0;
@@ -285,6 +333,7 @@ int findAll(const char *path, int *m)
                     if (fd == -1)
                     {
                         printf("ERROR \n invalid path");
+                        close(fd);
                         return -1;
                     }
                     lseek(fd, -1, SEEK_END);
@@ -299,18 +348,24 @@ int findAll(const char *path, int *m)
                         if (read(fd, &headerSize, 2) != 2)
                         {
                             perror("could not read size");
+                            close(fd);
+                            return -1;
                         }
                         lseek(fd, -headerSize, SEEK_END);
                         int version = 0;
                         if (read(fd, &version, 1) != 1)
                         {
                             perror("could not read version");
+                            close(fd);
+                            return -1;
                         }
 
                         int nrSections = 0;
                         if (read(fd, &nrSections, 1) != 1)
                         {
                             perror("could not read no_of_sections!");
+                            close(fd);
+                            return -1;
                         }
                         // printf("sect = %d\n",nrSections);
                         for (int i = 1; i <= nrSections; i++)
@@ -319,21 +374,29 @@ int findAll(const char *path, int *m)
                             if (read(fd, &name, 14) != 14)
                             {
                                 printf("could not read name");
+                                close(fd);
+                                return -1;
                             }
                             unsigned int sect_type = 0;
                             if (read(fd, &sect_type, 2) != 2)
                             {
                                 printf("could not read sect_type");
+                                close(fd);
+                                return -1;
                             }
                             int sect_offset = 0;
                             if (read(fd, &sect_offset, 4) != 4)
                             {
                                 printf("could not read sect_offset");
+                                close(fd);
+                                return -1;
                             }
                             int sect_size = 0;
                             if (read(fd, &sect_size, 4) != 4)
                             {
                                 printf("could not read sect_size");
+                                close(fd);
+                                return -1;
                             }
                             // printf("sect type = %d \n",sect_type);
                             if (nrSections >= 3 && nrSections <= 19)
@@ -371,13 +434,14 @@ int findAll(const char *path, int *m)
     return 0;
 }
 
-int extract(const char *path, int section, int line)
+int extract(const char *path, int section, int line, int *k)
 {
 
     int fd = open(path, O_RDONLY);
     if (fd == -1)
     {
         printf("ERROR \ninvalid file");
+        close(fd);
         return -1;
     }
     char magic;
@@ -385,6 +449,8 @@ int extract(const char *path, int section, int line)
     if (read(fd, &magic, 1) != 1)
     {
         printf("erorr read magic");
+        close(fd);
+        return -1;
     }
     if (magic == 'l')
     {
@@ -393,6 +459,8 @@ int extract(const char *path, int section, int line)
         if (read(fd, &headerSize, 2) != 2)
         {
             perror("could not read size");
+            close(fd);
+            return -1;
         }
         lseek(fd, -headerSize, SEEK_END);
         unsigned char c;
@@ -401,11 +469,15 @@ int extract(const char *path, int section, int line)
         if (read(fd, &c, 1) != 1)
         {
             perror("could not read version!");
+            close(fd);
+            return -1;
         }
         version = c;
         if (read(fd, &nrSections, 1) != 1)
         {
             perror("could not read no_of_sections!");
+            close(fd);
+            return -1;
         }
         struct sectionHeader **sectionsHeaders = (struct sectionHeader **)malloc(sizeof(struct sectionHeader) * nrSections);
         for (int i = 1; i <= nrSections; i++)
@@ -418,6 +490,13 @@ int extract(const char *path, int section, int line)
             if (read(fd, &name, 14) != 14)
             {
                 printf("could not read name");
+                for (int s = 1; s <= nrSections; s++)
+                {
+                    free(sectionsHeaders[s]);
+                }
+                free(sectionsHeaders);
+                close(fd);
+                return -1;
             }
             strcpy(sectionsHeaders[i]->name, name);
             sectionsHeaders[i]->name[14] = 0;
@@ -425,6 +504,13 @@ int extract(const char *path, int section, int line)
             if (read(fd, &sect_type, 2) != 2)
             {
                 printf("could not read sect_type");
+                for (int s = 1; s <= nrSections; s++)
+                {
+                    free(sectionsHeaders[s]);
+                }
+                free(sectionsHeaders);
+                close(fd);
+                return -1;
             }
             sectionsHeaders[i]->sect_type = 0;
             sectionsHeaders[i]->sect_type = sect_type;
@@ -432,6 +518,13 @@ int extract(const char *path, int section, int line)
             if (read(fd, &sect_offset, 4) != 4)
             {
                 printf("could not read sect_offset");
+                for (int s = 1; s <= nrSections; s++)
+                {
+                    free(sectionsHeaders[s]);
+                }
+                free(sectionsHeaders);
+                close(fd);
+                return -1;
             }
             sectionsHeaders[i]->sect_offset = 0;
             sectionsHeaders[i]->sect_offset = sect_offset;
@@ -440,6 +533,13 @@ int extract(const char *path, int section, int line)
             if (read(fd, &sect_size, 4) != 4)
             {
                 printf("could not read sect_size");
+                for (int s = 1; s <= nrSections; s++)
+                {
+                    free(sectionsHeaders[s]);
+                }
+                free(sectionsHeaders);
+                close(fd);
+                return -1;
             }
             sectionsHeaders[i]->sect_size = 0;
             sectionsHeaders[i]->sect_size = sect_size;
@@ -451,59 +551,36 @@ int extract(const char *path, int section, int line)
                 {
                     if (sectionsHeaders[i]->sect_type == 60 || sectionsHeaders[i]->sect_type == 75 || sectionsHeaders[i]->sect_type == 91)
                     {
-                        
-                        //int lungime_linie = 0;
+
                         if (i == section)
                         {
                             lseek(fd, sectionsHeaders[i]->sect_offset, SEEK_SET);
                             char *buff = (char *)calloc((sectionsHeaders[i]->sect_size + 1), sizeof(char));
                             char *linieString = (char *)malloc((sectionsHeaders[i]->sect_size + 1) * sizeof(char));
-                            // printf("linia 1:");
-                            //  printf("size = %d\n",sectionsHeaders[i]->sect_size);
-                            int j=0;
+                            int j = 0;
                             int line_nr = 1;
                             int poz_inceput = 0;
-                            int n=0;
-                            //int copie_poz_inceput =0;
+                            int n = 0;
                             while (j <= sectionsHeaders[i]->sect_size)
                             {
-                                // printf("BUN");
                                 if (read(fd, &c, 1) == 1)
                                 {
                                     buff[j] = c;
-                                    // printf("poz inceput %d\n",poz_inceput);
-                                    // printf("lungime linie %d\n",j-poz_inceput-1);
-                                    //printf("%c", buff[j]);
-                                    
-                                    if (j>0 && (int)buff[j] == 0x0A && (int)buff[j - 1] == 0x0D )
+                                    if (j > 0 && (int)buff[j] == 0x0A && (int)buff[j - 1] == 0x0D)
                                     {
-                                        //printf("%d %d \n",j,sectionsHeaders[i]->sect_size);
                                         if (line_nr == line)
                                         {
-                                            
-                                            //printf("%d ",j);
-                                            //printf("%d ",poz_inceput);
-                                            //printf("%d ",j-poz_inceput);
-                                            //printf("%d",line_nr);
-                                            printf("SUCCESS\n");
-                                            //for(int m = poz_inceput;m<j-poz_inceput-1;m++){
-                                                //printf("%c",buff[poz_inceput+m]);
-                                              //  linieString[m]=buff[poz_inceput+m];
-                                            //}
-                                            //printf("%c",linieString[j-poz_inceput]);
-                                            //linieString[j-poz_inceput]=0;
-                                            //char *copielinieString = (char *)malloc((sectionsHeaders[i]->sect_size + 1) * sizeof(char));
-                                            //for(int n = 0; n<j-poz_inceput-1;j++){
-                                                //printf("%c",linieString[0]);
-                                                //copielinieString[n] = linieString [j-poz_inceput-n-1];
-                                            //}
-                                            //copielinieString[j-poz_inceput]=0;
-                                            n=0;
-                                            for(int m = j-1;m>=poz_inceput;m--){
-                                                linieString[n++]=buff[m];
+                                            if(*k==0){
+                                                printf("SUCCESS\n");
+                                                *k=1;
                                             }
-                                            linieString[n]=0;
-                                            printf("%s",linieString);
+                                            n = 0;
+                                            for (int m = j - 1; m >= poz_inceput; m--)
+                                            {
+                                                linieString[n++] = buff[m];
+                                            }
+                                            linieString[n] = 0;
+                                            printf("%s", linieString);
                                             for (int s = 1; s <= nrSections; s++)
                                             {
                                                 free(sectionsHeaders[s]);
@@ -511,52 +588,50 @@ int extract(const char *path, int section, int line)
                                             free(sectionsHeaders);
                                             free(buff);
                                             free(linieString);
+                                            close(fd);
                                             return 0;
                                         }
-                                        // strrev(linieString);
-                                        //printf("%d",line_nr);
                                         line_nr++;
-                                        //copie_poz_inceput = poz_inceput;
                                         poz_inceput = j + 1;
-                                        // printf("\nlinie noua\n");
-                                        // printf("\n");
-                                        // printf("linia %d:",line_nr);
-                                    }else{
-                                        
-                                        if(line_nr == line){
-                                            
-                                            linieString[n++]=buff[j];
+                                    }
+                                    else
+                                    {
+
+                                        if (line_nr == line)
+                                        {
+
+                                            linieString[n++] = buff[j];
                                         }
                                     }
                                 }
                                 j++;
                             }
-                            if(line_nr == line){
-                                printf("SUCCESS\n");
-                                char *copielinieString = (char *)malloc((sectionsHeaders[i]->sect_size + 1) * sizeof(char));
-                                int k=0;
-                                //printf("%d",strlen(linieString));
-                                printf("%c",linieString[strlen(linieString)-1]);
-                                for(int i=strlen(linieString)-2;i>=0;i--){
-                                    copielinieString[k++]=linieString[i];
+                            if (line_nr == line)
+                            {
+                                if(*k==0){
+                                    printf("SUCCESS\n");
+                                    *k=1;
                                 }
-                                copielinieString[k]=0;
-                                printf("%s",copielinieString);
+                                char *copielinieString = (char *)malloc((sectionsHeaders[i]->sect_size + 1) * sizeof(char));
+                                int k = 0;
+                                printf("%c", linieString[strlen(linieString) - 1]);
+                                for (int i = strlen(linieString) - 2; i >= 0; i--)
+                                {
+                                    copielinieString[k++] = linieString[i];
+                                }
+                                copielinieString[k] = 0;
+                                printf("%s", copielinieString);
                                 free(copielinieString);
                                 for (int s = 1; s <= nrSections; s++)
-                                            {
-                                                free(sectionsHeaders[s]);
-                                            }
-                                            free(sectionsHeaders);
-                                            free(buff);
-                                            free(linieString);
-                                            return 1;
+                                {
+                                    free(sectionsHeaders[s]);
+                                }
+                                free(sectionsHeaders);
+                                free(buff);
+                                free(linieString);
+                                close(fd);
+                                return 1;
                             }
-                            
-                            //printf("%c",buff[sectionsHeaders[i]->sect_size]);
-                            //printf("lungime_linie = %d \n", lungime_linie);
-                            // printf("%ld", seek_cur);
-                             //printf("nr linii= %d\n", line_nr);
                             if (line_nr < line)
                             {
                                 printf("ERROR\ninvalid line");
@@ -567,9 +642,9 @@ int extract(const char *path, int section, int line)
                                 free(sectionsHeaders);
                                 free(buff);
                                 free(linieString);
+                                close(fd);
                                 return -1;
                             }
-                            // printf("%d", nrSections);
                             if (section > nrSections)
                             {
                                 printf("ERROR\ninvalid section");
@@ -580,6 +655,7 @@ int extract(const char *path, int section, int line)
                                 free(sectionsHeaders);
                                 free(buff);
                                 free(linieString);
+                                close(fd);
                                 return -1;
                             }
                         }
@@ -593,6 +669,7 @@ int extract(const char *path, int section, int line)
                     free(sectionsHeaders[s]);
                 }
                 free(sectionsHeaders);
+                close(fd);
                 return -1;
             }
 
@@ -604,6 +681,7 @@ int extract(const char *path, int section, int line)
             free(sectionsHeaders[s]);
         }
         free(sectionsHeaders);
+        close(fd);
     }
     close(fd);
     return 0;
@@ -613,7 +691,7 @@ int main(int argc, char **argv)
     char name_start_with[512] = "";
     char permissions[10] = "";
     char path[512] = "";
-    int k = 0;
+    // int k = 0;
     int r = 0, l = 0, p = 0, f = 0, e = 0;
     int line = 0, section = 0;
     if (argc >= 2)
@@ -679,7 +757,8 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        printf("SUCCESS \n");
+                        // printf("SUCCESS \n");
+                        int k = 0;
 
                         listDir(path, r, name_start_with, permissions, &k);
                         closedir(dir);
@@ -694,7 +773,8 @@ int main(int argc, char **argv)
             {
                 if (strcmp(path, "") != 0)
                 {
-                    parse(path);
+                    int n=0;
+                    parse(path,&n);
                 }
                 else
                 {
@@ -717,8 +797,8 @@ int main(int argc, char **argv)
             {
                 if (strcmp(path, "") != 0)
                 {
-                    // int k=0;
-                    extract(path, section, line);
+                    int p=0;
+                    extract(path, section, line,&p);
                 }
                 else
                 {
