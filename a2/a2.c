@@ -10,9 +10,11 @@ typedef struct{
 }TH_STRUCT;
 typedef struct{
     int id;
-    sem_t *mutex;
-    sem_t *barrier;
+    sem_t *log;
+    pthread_mutex_t *mutex;
+    pthread_cond_t *cond;
 }TH_STRUCT_P5;
+
 void *thread_function(void *args){
     TH_STRUCT *s = (TH_STRUCT*)args;
     info(BEGIN,7,s->value);
@@ -23,6 +25,28 @@ void *thread_function(void *args){
         pthread_join(tid1,NULL);
     }
     info(END,7,s->value);
+    return NULL;
+}
+int count = 0;
+void *thread_function_p5(void*args){
+    TH_STRUCT_P5 *s = (TH_STRUCT_P5*)args;
+    sem_wait(s->log);
+    info(BEGIN,5,s->id);
+    info(END,5,s->id);
+    wait(NULL);
+    sem_post(s->log);
+    /*pthread_mutex_lock(s->mutex);
+    while(count >= 6){
+        pthread_cond_wait(s->cond,s->mutex);
+    }
+    count ++;
+    pthread_mutex_unlock(s->mutex);
+    usleep(2000);
+    pthread_mutex_lock(s->mutex);
+    pthread_cond_signal(s->cond);
+    count --;
+    pthread_mutex_unlock(s->mutex);*/
+
     return NULL;
 }
 int main(){
@@ -84,9 +108,25 @@ int main(){
             }else if(pid5 == 0){
                 info(BEGIN,5,0);
                 int nrThreads= 42;
-                pthread_t tids[42];
-                sem_t mutex;
-                sem_t barrier;
+                pthread_t tids[nrThreads];
+                TH_STRUCT_P5 params[nrThreads];
+                sem_t log;
+                pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+                pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+                sem_init(&log,0,6);
+                for(int i=0;i<nrThreads;i++){
+                    params[i].id = i+1;
+                    params[i].log = &log;
+                    params[i].mutex = &mutex;
+                    params[i].cond = &cond;
+                    pthread_create(&tids[i],NULL,thread_function_p5,&params[i]);
+                }
+                for(int i=0;i<nrThreads;i++){
+                    pthread_join(tids[i],NULL);
+                }
+                sem_destroy(&log);
+                pthread_mutex_destroy(&mutex);
+                pthread_cond_destroy(&cond);
                 pid6= fork();
                 if(pid6 == -1){
                     perror("could not create p6");
