@@ -66,66 +66,37 @@ void *thread_function(void *args)
 }
 int count = 0;
 int s_13 = 0;
-
 int count1 = 0;
+
 void *thread_function_p5(void *args)
 {
     TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
+    
     sem_wait(s->log);
-    info(BEGIN, 5, s->id);
-    /*pthread_mutex_lock(s->mutex);
-    count++;
-    pthread_mutex_unlock(s->mutex);
-    if (s->id == 13)
-    {
-        pthread_mutex_lock(s->mutex);
-        s_13 = 1;
-        pthread_mutex_unlock(s->mutex);
-        while (count1 < 5)
-        {
-            pthread_cond_wait(s->cond, s->mutex);
+    info(BEGIN,5,s->id);
+    pthread_mutex_lock(s->mutex);
+    count ++;
+    if(s->id == 13){
+        while(count>=6){
+            pthread_cond_wait(s->cond,s->mutex);
         }
-        pthread_mutex_lock(s->mutex);
-        s_13 = 0;
+        info(END,5,13);
         pthread_mutex_unlock(s->mutex);
-        info(END, 5, 13);
-        pthread_cond_broadcast(s->cond_13);
-       // pthread_mutex_unlock(s->mutex);
         sem_post(s->log);
         return NULL;
-
     }
-    else
-    {
-        pthread_mutex_lock(s->mutex);
-        if (s_13 == 1 )
-        {
-            pthread_mutex_unlock(s->mutex);
-            pthread_mutex_lock(s->mutex);
-            count1++;
-
-            if( count1 == 5){
-                pthread_cond_signal(s->cond);
-            }
-            pthread_mutex_unlock(s->mutex);
-            pthread_cond_wait(s->cond_13,s->mutex);
-        }
-        pthread_mutex_unlock(s->mutex);
-    }
-    */
-    // pthread_mutex_lock(s->mutex);
-    /*if (count == 6)
-    {
+    pthread_mutex_unlock(s->mutex);
+    pthread_mutex_lock(s->mutex);
+    count --;
+    if(s->id!=13)info(END,5,s->id);
+    if(count ==5){
         pthread_cond_signal(s->cond);
     }
-    */
-    // count--;
-    // pthread_mutex_unlock(s->mutex);
-    info(END, 5, s->id);
-    sem_post(s->log);
+
+    pthread_mutex_unlock(s->mutex); 
+    sem_post(s->log) ; 
     return NULL;
 }
-
 int main()
 {
     pid_t pid2 = 0, pid3 = 0, pid4 = 0, pid5 = 0, pid6 = 0, pid7 = 0;
@@ -244,7 +215,7 @@ int main()
                 {
                     params[i].id = i + 1;
                     params[i].log = &log;
-                    params[i].mutex = &mutex;
+                   params[i].mutex = &mutex;
                     params[i].cond = &cond;
                     params[i].cond_13 = &cond_13;
                     params[i].barrier = &barrier;
@@ -285,9 +256,9 @@ int main()
             }
         }
     }
-    sem_destroy(sem1);
-    sem_destroy(sem2);
-    sem_destroy(sem3);
-    sem_destroy(sem4);
+    sem_close(sem1);
+    sem_close(sem2);
+    sem_close(sem3);
+    sem_close(sem4);
     return 0;
 }
