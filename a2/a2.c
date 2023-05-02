@@ -12,6 +12,7 @@ typedef struct
     int value;
     int pid;
 } TH_STRUCT;
+
 typedef struct
 {
     int id;
@@ -22,41 +23,50 @@ typedef struct
     pthread_mutex_t *barrier;
     int nr_still_to_come;
 } TH_STRUCT_P5;
-sem_t *sem1,*sem2,*sem3,*sem4;
+
+sem_t *sem1, *sem2, *sem3, *sem4;
+
 void *thread_function(void *args)
 {
     TH_STRUCT *s = (TH_STRUCT *)args;
-     if(s->value == 2 && s->pid==7){
-         sem_wait(sem1);
-     }
-    if(s->value ==4 && s->pid ==2){
+    if (s->value == 2 && s->pid == 7)
+    {
+        sem_wait(sem1);
+    }
+    if (s->value == 4 && s->pid == 2)
+    {
         sem_wait(sem2);
     }
-    
-    if(s->value == 1&&s->pid == 7){
+
+    if (s->value == 1 && s->pid == 7)
+    {
         sem_wait(sem3);
     }
     info(BEGIN, s->pid, s->value);
-    if(s->value == 4 &&s->pid ==7){
+    if (s->value == 4 && s->pid == 7)
+    {
         sem_post(sem3);
         sem_wait(sem4);
     }
     info(END, s->pid, s->value);
-     if(s->value == 3 && s->pid==2){
-         sem_post(sem1);
-     }
-    if(s->value==2 && s->pid==7){
+    if (s->value == 3 && s->pid == 2)
+    {
+        sem_post(sem1);
+    }
+    if (s->value == 2 && s->pid == 7)
+    {
         sem_post(sem2);
     }
-    
-    if(s->value == 1 &&s->pid ==7){
+
+    if (s->value == 1 && s->pid == 7)
+    {
         sem_post(sem4);
     }
     return NULL;
 }
 int count = 0;
 int s_13 = 0;
-int v[6] = {0};
+
 int count1 = 0;
 void *thread_function_p5(void *args)
 {
@@ -83,17 +93,17 @@ void *thread_function_p5(void *args)
        // pthread_mutex_unlock(s->mutex);
         sem_post(s->log);
         return NULL;
-        
+
     }
     else
-    {   
+    {
         pthread_mutex_lock(s->mutex);
         if (s_13 == 1 )
         {
             pthread_mutex_unlock(s->mutex);
             pthread_mutex_lock(s->mutex);
             count1++;
-            
+
             if( count1 == 5){
                 pthread_cond_signal(s->cond);
             }
@@ -103,14 +113,14 @@ void *thread_function_p5(void *args)
         pthread_mutex_unlock(s->mutex);
     }
     */
-    //pthread_mutex_lock(s->mutex);
+    // pthread_mutex_lock(s->mutex);
     /*if (count == 6)
     {
         pthread_cond_signal(s->cond);
     }
     */
-    //count--;
-    //pthread_mutex_unlock(s->mutex);
+    // count--;
+    // pthread_mutex_unlock(s->mutex);
     info(END, 5, s->id);
     sem_post(s->log);
     return NULL;
@@ -124,16 +134,17 @@ int main()
     TH_STRUCT params_p7[4];
     pthread_t tids_p7[4];
     init();
-    info(BEGIN, 1, 0);
     sem_unlink("sem1");
     sem_unlink("sem2");
     sem_unlink("sem3");
     sem_unlink("sem4");
-    
-    sem1 = sem_open("sem1",O_CREAT,0644,0);
-    sem2 = sem_open("sem2",O_CREAT,0644,0);
-    sem3 = sem_open("sem3",O_CREAT,0644,0);
-    sem4 = sem_open("sem4",O_CREAT,0644,0);
+
+    sem1 = sem_open("sem1", O_CREAT, 0644, 0);
+    sem2 = sem_open("sem2", O_CREAT, 0644, 0);
+    sem3 = sem_open("sem3", O_CREAT, 0644, 0);
+    sem4 = sem_open("sem4", O_CREAT, 0644, 0);
+    info(BEGIN, 1, 0);
+
     pid2 = fork();
     if (pid2 == -1)
     {
@@ -154,11 +165,9 @@ int main()
             pthread_join(tids_p2[i], NULL);
         }
         info(END, 2, 0);
-        
     }
     else
     {
-        //wait(NULL);
         pid3 = fork();
         if (pid3 == -1)
         {
@@ -186,7 +195,7 @@ int main()
                 else if (pid7 == 0)
                 {
                     info(BEGIN, 7, 0);
-                    
+
                     for (int i = 0; i < 4; i++)
                     {
                         params_p7[i].value = i + 1;
@@ -213,7 +222,6 @@ int main()
         }
         else
         {
-            //wait(NULL);
             pid5 = fork();
             if (pid5 == -1)
             {
@@ -271,8 +279,8 @@ int main()
             else
             {
                 wait(NULL); // astept dupa 2
-                wait(NULL); //astept dupa 3
-                wait(NULL); //astept dupa 5
+                wait(NULL); // astept dupa 3
+                wait(NULL); // astept dupa 5
                 info(END, 1, 0);
             }
         }
