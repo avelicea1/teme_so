@@ -5,9 +5,12 @@
 #include "a2_helper.h"
 #include <pthread.h>
 #include <semaphore.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 typedef struct
 {
     int value;
+    int pid;
 } TH_STRUCT;
 typedef struct
 {
@@ -19,57 +22,118 @@ typedef struct
     pthread_mutex_t *barrier;
     int nr_still_to_come;
 } TH_STRUCT_P5;
-
+sem_t *sem1,*sem2,*sem3,*sem4;
 void *thread_function(void *args)
 {
     TH_STRUCT *s = (TH_STRUCT *)args;
-    info(BEGIN, 7, s->value);
-    if (s->value == 4)
-    {
-        pthread_t tid1;
-        int i = 1;
-        pthread_create(&tid1, NULL, thread_function, &i);
-        pthread_join(tid1, NULL);
+     if(s->value == 2 && s->pid==7){
+         sem_wait(sem1);
+     }
+    if(s->value ==4 && s->pid ==2){
+        sem_wait(sem2);
     }
-    info(END, 7, s->value);
+    
+    if(s->value == 1&&s->pid == 7){
+        sem_wait(sem3);
+    }
+    info(BEGIN, s->pid, s->value);
+    if(s->value == 4 &&s->pid ==7){
+        sem_post(sem3);
+        sem_wait(sem4);
+    }
+    info(END, s->pid, s->value);
+     if(s->value == 3 && s->pid==2){
+         sem_post(sem1);
+     }
+    if(s->value==2 && s->pid==7){
+        sem_post(sem2);
+    }
+    
+    if(s->value == 1 &&s->pid ==7){
+        sem_post(sem4);
+    }
     return NULL;
 }
 int count = 0;
 int s_13 = 0;
-int v[6]={0};
+int v[6] = {0};
+int count1 = 0;
 void *thread_function_p5(void *args)
 {
-    TH_STRUCT_P5 *s = (TH_STRUCT_P5*)args;
+    TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
     sem_wait(s->log);
-    info(BEGIN,5,s->id);
-    pthread_mutex_lock(s->mutex);
-    count ++;
-    if(s->id == 13){
-        while(count>=6){
-            pthread_cond_wait(s->cond,s->mutex);
-        }
-        info(END,5,13);
+    info(BEGIN, 5, s->id);
+    /*pthread_mutex_lock(s->mutex);
+    count++;
+    pthread_mutex_unlock(s->mutex);
+    if (s->id == 13)
+    {
+        pthread_mutex_lock(s->mutex);
+        s_13 = 1;
         pthread_mutex_unlock(s->mutex);
+        while (count1 < 5)
+        {
+            pthread_cond_wait(s->cond, s->mutex);
+        }
+        pthread_mutex_lock(s->mutex);
+        s_13 = 0;
+        pthread_mutex_unlock(s->mutex);
+        info(END, 5, 13);
+        pthread_cond_broadcast(s->cond_13);
+       // pthread_mutex_unlock(s->mutex);
         sem_post(s->log);
         return NULL;
+        
     }
-    pthread_mutex_unlock(s->mutex);
-    pthread_mutex_lock(s->mutex);
-    count --;
-    info(END,5,s->id);
-    if(count ==5){
+    else
+    {   
+        pthread_mutex_lock(s->mutex);
+        if (s_13 == 1 )
+        {
+            pthread_mutex_unlock(s->mutex);
+            pthread_mutex_lock(s->mutex);
+            count1++;
+            
+            if( count1 == 5){
+                pthread_cond_signal(s->cond);
+            }
+            pthread_mutex_unlock(s->mutex);
+            pthread_cond_wait(s->cond_13,s->mutex);
+        }
+        pthread_mutex_unlock(s->mutex);
+    }
+    */
+    //pthread_mutex_lock(s->mutex);
+    /*if (count == 6)
+    {
         pthread_cond_signal(s->cond);
     }
-    pthread_mutex_unlock(s->mutex);
-    
+    */
+    //count--;
+    //pthread_mutex_unlock(s->mutex);
+    info(END, 5, s->id);
     sem_post(s->log);
     return NULL;
 }
+
 int main()
 {
     pid_t pid2 = 0, pid3 = 0, pid4 = 0, pid5 = 0, pid6 = 0, pid7 = 0;
+    TH_STRUCT params_p2[4];
+    pthread_t tids_p2[4];
+    TH_STRUCT params_p7[4];
+    pthread_t tids_p7[4];
     init();
     info(BEGIN, 1, 0);
+    sem_unlink("sem1");
+    sem_unlink("sem2");
+    sem_unlink("sem3");
+    sem_unlink("sem4");
+    
+    sem1 = sem_open("sem1",O_CREAT,0644,0);
+    sem2 = sem_open("sem2",O_CREAT,0644,0);
+    sem3 = sem_open("sem3",O_CREAT,0644,0);
+    sem4 = sem_open("sem4",O_CREAT,0644,0);
     pid2 = fork();
     if (pid2 == -1)
     {
@@ -79,11 +143,22 @@ int main()
     else if (pid2 == 0)
     {
         info(BEGIN, 2, 0);
+        for (int i = 0; i < 4; i++)
+        {
+            params_p2[i].value = i + 1;
+            params_p2[i].pid = 2;
+            pthread_create(&tids_p2[i], NULL, thread_function, &params_p2[i]);
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            pthread_join(tids_p2[i], NULL);
+        }
         info(END, 2, 0);
+        
     }
     else
     {
-        wait(NULL);
+        //wait(NULL);
         pid3 = fork();
         if (pid3 == -1)
         {
@@ -111,16 +186,16 @@ int main()
                 else if (pid7 == 0)
                 {
                     info(BEGIN, 7, 0);
-                    TH_STRUCT params[3];
-                    pthread_t tids[3];
-                    for (int i = 0; i < 3; i++)
+                    
+                    for (int i = 0; i < 4; i++)
                     {
-                        params[i].value = i + 2;
-                        pthread_create(&tids[i], NULL, thread_function, &params[i]);
+                        params_p7[i].value = i + 1;
+                        params_p7[i].pid = 7;
+                        pthread_create(&tids_p7[i], NULL, thread_function, &params_p7[i]);
                     }
-                    for (int i = 0; i < 3; i++)
+                    for (int i = 0; i < 4; i++)
                     {
-                        pthread_join(tids[i], NULL);
+                        pthread_join(tids_p7[i], NULL);
                     }
                     info(END, 7, 0);
                 }
@@ -138,7 +213,7 @@ int main()
         }
         else
         {
-            wait(NULL);
+            //wait(NULL);
             pid5 = fork();
             if (pid5 == -1)
             {
@@ -195,11 +270,16 @@ int main()
             }
             else
             {
-                wait(NULL);
-                wait(NULL);
+                wait(NULL); // astept dupa 2
+                wait(NULL); //astept dupa 3
+                wait(NULL); //astept dupa 5
                 info(END, 1, 0);
             }
         }
     }
+    sem_destroy(sem1);
+    sem_destroy(sem2);
+    sem_destroy(sem3);
+    sem_destroy(sem4);
     return 0;
 }
