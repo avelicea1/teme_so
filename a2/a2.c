@@ -67,33 +67,45 @@ void *thread_function(void *args)
 int count = 0;
 int s_13 = 0;
 int count1 = 0;
+sem_t *asteapta_dupa_13;
 
 void *thread_function_p5(void *args)
 {
     TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
-    
     sem_wait(s->log);
     info(BEGIN,5,s->id);
-    pthread_mutex_lock(s->mutex);
+    /*pthread_mutex_lock(s->mutex);
     count ++;
-    if(s->id == 13){
-        while(count>=6){
-            pthread_cond_wait(s->cond,s->mutex);
-        }
-        info(END,5,13);
-        pthread_mutex_unlock(s->mutex);
-        sem_post(s->log);
-        return NULL;
-    }
     pthread_mutex_unlock(s->mutex);
-    pthread_mutex_lock(s->mutex);
-    count --;
-    if(s->id!=13)info(END,5,s->id);
-    if(count ==5){
-        pthread_cond_signal(s->cond);
-    }
-
-    pthread_mutex_unlock(s->mutex); 
+    if(s->id == 13){
+        pthread_mutex_lock(s->mutex);
+        s_13 = 1;
+        pthread_mutex_unlock(s->mutex);
+        if(count1<5){
+            sem_wait(asteapta_dupa_13);
+        }else if(count1==5){
+            info(END,5,13);
+            pthread_mutex_lock(s->mutex);
+            s_13 =0;
+            pthread_mutex_unlock(s->mutex);
+            pthread_cond_broadcast(s->cond_13);
+            sem_post(s->log);
+            return NULL;
+        }
+    }else{
+        pthread_mutex_lock(s->mutex);
+        if(s_13 == 1)count1++;
+        if(count1 == 5 && s_13 ==1){
+            sem_post(asteapta_dupa_13);
+        }
+        pthread_mutex_unlock(s->mutex);
+        //printf("count = %d\n",count);
+        if(count >= 36 && s_13 == 0){
+            pthread_cond_wait(s->cond_13,s->mutex);
+            sem_post(asteapta_dupa_13);
+        }
+    }*/
+    info(END,5,s->id);
     sem_post(s->log) ; 
     return NULL;
 }
@@ -104,16 +116,27 @@ int main()
     pthread_t tids_p2[4];
     TH_STRUCT params_p7[4];
     pthread_t tids_p7[4];
+    int nrThreads = 42;
+    pthread_t tids[nrThreads];
+    TH_STRUCT_P5 params[nrThreads];
+    sem_t *log;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t cond_13 = PTHREAD_COND_INITIALIZER;
+    pthread_mutex_t barrier = PTHREAD_MUTEX_INITIALIZER;
     init();
     sem_unlink("sem1");
     sem_unlink("sem2");
     sem_unlink("sem3");
     sem_unlink("sem4");
-
+    sem_unlink("log");
+    sem_unlink("asteapta_dupa_13");
     sem1 = sem_open("sem1", O_CREAT, 0644, 0);
     sem2 = sem_open("sem2", O_CREAT, 0644, 0);
     sem3 = sem_open("sem3", O_CREAT, 0644, 0);
     sem4 = sem_open("sem4", O_CREAT, 0644, 0);
+    log = sem_open("log",O_CREAT, 0644, 6);
+    asteapta_dupa_13 = sem_open("asteapta_dupa_13",O_CREAT, 0644, 1);
     info(BEGIN, 1, 0);
 
     pid2 = fork();
@@ -202,19 +225,11 @@ int main()
             else if (pid5 == 0)
             {
                 info(BEGIN, 5, 0);
-                int nrThreads = 42;
-                pthread_t tids[nrThreads];
-                TH_STRUCT_P5 params[nrThreads];
-                sem_t log;
-                pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-                pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-                pthread_cond_t cond_13 = PTHREAD_COND_INITIALIZER;
-                pthread_mutex_t barrier = PTHREAD_MUTEX_INITIALIZER;
-                sem_init(&log, 0, 6);
+                
                 for (int i = 0; i < nrThreads; i++)
                 {
                     params[i].id = i + 1;
-                    params[i].log = &log;
+                    params[i].log = log;
                    params[i].mutex = &mutex;
                     params[i].cond = &cond;
                     params[i].cond_13 = &cond_13;
@@ -225,11 +240,7 @@ int main()
                 {
                     pthread_join(tids[i], NULL);
                 }
-                sem_destroy(&log);
-                pthread_mutex_destroy(&mutex);
-                pthread_cond_destroy(&cond);
-                pthread_cond_destroy(&cond_13);
-                pthread_mutex_destroy(&barrier);
+                
                 pid6 = fork();
                 if (pid6 == -1)
                 {
@@ -260,5 +271,10 @@ int main()
     sem_close(sem2);
     sem_close(sem3);
     sem_close(sem4);
+    sem_close(log);
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond);
+    pthread_cond_destroy(&cond_13);
+    pthread_mutex_destroy(&barrier);
     return 0;
 }
