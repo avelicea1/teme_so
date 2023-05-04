@@ -17,6 +17,7 @@ typedef struct
 {
     int id;
     sem_t *log;
+    int waiting;
     pthread_mutex_t *mutex;
     pthread_cond_t *cond_13;
     pthread_cond_t *cond;
@@ -64,49 +65,85 @@ void *thread_function(void *args)
     }
     return NULL;
 }
-int count = 0;
-int s_13 = 0;
-int count1 = 0;
-sem_t *asteapta_dupa_13;
+int threads_count = 0;
+int waiting_count = 0;
+int did_s_13_close = 0;
+int is_s_13_open = 0;
+
+void close_thread(TH_STRUCT_P5 *s) {
+    pthread_mutex_unlock(s->mutex);
+    info(END,5,s->id);
+    //printf("END %d \n", s->id);
+    sem_post(s->log);
+}
+
 
 void *thread_function_p5(void *args)
 {
     TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
     sem_wait(s->log);
     info(BEGIN,5,s->id);
-    /*pthread_mutex_lock(s->mutex);
-    count ++;
-    pthread_mutex_unlock(s->mutex);
-    if(s->id == 13){
-        pthread_mutex_lock(s->mutex);
-        s_13 = 1;
-        pthread_mutex_unlock(s->mutex);
-        if(count1<5){
-            sem_wait(asteapta_dupa_13);
-        }else if(count1==5){
-            info(END,5,13);
-            pthread_mutex_lock(s->mutex);
-            s_13 =0;
-            pthread_mutex_unlock(s->mutex);
-            pthread_cond_broadcast(s->cond_13);
-            sem_post(s->log);
-            return NULL;
+    //printf("BEGIN %d \n", s->id);
+    pthread_mutex_lock(s->mutex);
+    waiting_count++;
+
+    if (s->id == 13) {
+        // suntem pe procesul 13
+        is_s_13_open = 1;
+        if (waiting_count != 6) {
+            // daca nu sunt 6 treaduri open
+            // asteptam dupa conditie
+            //printf("___W %d \n", s->id);
+            pthread_cond_wait(s->cond_13, s->mutex);
         }
-    }else{
-        pthread_mutex_lock(s->mutex);
-        if(s_13 == 1)count1++;
-        if(count1 == 5 && s_13 ==1){
-            sem_post(asteapta_dupa_13);
+
+        did_s_13_close = 1;
+        waiting_count--;
+        // daca cineva a notificat 13 sa se inchida suntem 100% siguri ca alte 6 threaduri sunt open
+        // si putem sa notificam toate celelalte threaduri sa se inchida
+        pthread_cond_broadcast(s->cond);
+        close_thread(s);
+        return NULL;
+    }
+
+    if (did_s_13_close == 1) {
+        // daca 13 s-a inchis deja notificam alte threaduri care asteapta dupa conditie sa se inchida 
+        // si ne inchidem
+        //printf("___BROADCAST %d \n\n\n", s->id);
+        pthread_cond_broadcast(s->cond);
+        close_thread(s);
+        return NULL;
+    }
+    if (is_s_13_open == 1) {
+        // daca 13 e deschis si nu suntem pe procesul 13
+        // verificam daca acest thread este threadul cu nr 6 din toate care ruleaza curent
+        if (waiting_count == 6) {
+            // daca suntem threadul cu numarul 6 ii spunem la 13 sa se inchida
+            pthread_cond_signal(s->cond_13);
         }
-        pthread_mutex_unlock(s->mutex);
-        //printf("count = %d\n",count);
-        if(count >= 36 && s_13 == 0){
-            pthread_cond_wait(s->cond_13,s->mutex);
-            sem_post(asteapta_dupa_13);
-        }
-    }*/
-    info(END,5,s->id);
-    sem_post(s->log) ; 
+        // asteptam ca 13 sa se inchida si sa ne notifice si pe noi sa ne inchidem
+        pthread_cond_wait(s->cond, s->mutex);
+        waiting_count--;
+        close_thread(s);
+        return NULL;
+    }
+    // in acest caz 13 nu s-a deschis inca
+    if (waiting_count == 6) {
+        // verificam daca suntem threadul cu nr 6 si pentru a nu face trigger la deadlock ii spunem unui
+        // alt thread sa se inchida dupa care asteptam
+        pthread_cond_signal(s->cond);
+        pthread_cond_wait(s->cond, s->mutex);
+        waiting_count--;
+        close_thread(s);
+        return NULL;
+    }
+
+    // in acest caz 13 nu s-a deschis inca si nu sunt 6 threaduri deschise deja
+    // asteptam ca cel putin 6 threaduri sa se deschida
+    //printf("___W %d \n", s->id);
+    pthread_cond_wait(s->cond, s->mutex);
+    waiting_count--;
+    close_thread(s);
     return NULL;
 }
 int main()
@@ -130,13 +167,13 @@ int main()
     sem_unlink("sem3");
     sem_unlink("sem4");
     sem_unlink("log");
-    sem_unlink("asteapta_dupa_13");
+    //sem_unlink("asteapta_dupa_13");
     sem1 = sem_open("sem1", O_CREAT, 0644, 0);
     sem2 = sem_open("sem2", O_CREAT, 0644, 0);
     sem3 = sem_open("sem3", O_CREAT, 0644, 0);
     sem4 = sem_open("sem4", O_CREAT, 0644, 0);
-    log = sem_open("log",O_CREAT, 0644, 6);
-    asteapta_dupa_13 = sem_open("asteapta_dupa_13",O_CREAT, 0644, 1);
+    log = sem_open("log", O_CREAT, 0644, 6);
+    //asteapta_dupa_13 = sem_open("asteapta_dupa_13", O_CREAT, 0644, 6);
     info(BEGIN, 1, 0);
 
     pid2 = fork();
@@ -225,12 +262,12 @@ int main()
             else if (pid5 == 0)
             {
                 info(BEGIN, 5, 0);
-                
                 for (int i = 0; i < nrThreads; i++)
                 {
                     params[i].id = i + 1;
                     params[i].log = log;
-                   params[i].mutex = &mutex;
+                    params[i].waiting = 0;
+                    params[i].mutex = &mutex;
                     params[i].cond = &cond;
                     params[i].cond_13 = &cond_13;
                     params[i].barrier = &barrier;
@@ -240,7 +277,7 @@ int main()
                 {
                     pthread_join(tids[i], NULL);
                 }
-                
+
                 pid6 = fork();
                 if (pid6 == -1)
                 {
