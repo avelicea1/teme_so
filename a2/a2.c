@@ -86,9 +86,9 @@ void *thread_function_p5(void *args)
     //printf("BEGIN %d \n", s->id);
     pthread_mutex_lock(s->mutex);
     waiting_count++;
-
+    
     if (s->id == 13) {
-        // suntem pe procesul 13
+        // suntem pe threadul 13
         is_s_13_open = 1;
         if (waiting_count != 6) {
             // daca nu sunt 6 treaduri open
@@ -110,8 +110,8 @@ void *thread_function_p5(void *args)
         // daca 13 s-a inchis deja notificam alte threaduri care asteapta dupa conditie sa se inchida 
         // si ne inchidem
         //printf("___BROADCAST %d \n\n\n", s->id);
-        pthread_cond_broadcast(s->cond);
         close_thread(s);
+        pthread_cond_broadcast(s->cond);
         return NULL;
     }
     if (is_s_13_open == 1) {
