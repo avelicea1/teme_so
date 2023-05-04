@@ -101,8 +101,8 @@ void *thread_function_p5(void *args)
         waiting_count--;
         // daca cineva a notificat 13 sa se inchida suntem 100% siguri ca alte 6 threaduri sunt open
         // si putem sa notificam toate celelalte threaduri sa se inchida
-        pthread_cond_broadcast(s->cond);
         close_thread(s);
+        pthread_cond_broadcast(s->cond);
         return NULL;
     }
 
