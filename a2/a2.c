@@ -76,17 +76,29 @@ void close_thread(TH_STRUCT_P5 *s) {
     sem_post(s->log);
 }
 
+void *thread_function_p5plus(void *args) {
+    TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
+    sem_wait(s->log);
+    //printf("BEGIN %d \n", s->id);
+    info(BEGIN,5,s->id);
+    info(END,5,s->id);
+    //printf("END %d \n", s->id);
+    sem_post(s->log);
+    return NULL;
+}
+
 
 void *thread_function_p5(void *args)
 {
     TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
     sem_wait(s->log);
+    //printf("BEGIN %d \n", s->id);
     info(BEGIN,5,s->id);
     pthread_mutex_lock(s->mutex);
     waiting_count++;
-    
+
     if (s->id == 13) {
-        // suntem pe threadul 13
+        // suntem pe procesul 13
         is_s_13_open = 1;
         if (waiting_count != 6) {
             // daca nu sunt 6 treaduri open
@@ -103,43 +115,11 @@ void *thread_function_p5(void *args)
         pthread_cond_broadcast(s->cond);
         return NULL;
     }
-
-    if (did_s_13_close == 1) {
-        // daca 13 s-a inchis deja notificam alte threaduri care asteapta dupa conditie sa se inchida 
-        // si ne inchidem
-        //printf("___BROADCAST %d \n\n\n", s->id);
-        close_thread(s);
-        pthread_cond_broadcast(s->cond);
-        return NULL;
-    }
-    if (is_s_13_open == 1) {
-        // daca 13 e deschis si nu suntem pe procesul 13
-        // verificam daca acest thread este threadul cu nr 6 din toate care ruleaza curent
-        if (waiting_count == 6) {
-            // daca suntem threadul cu numarul 6 ii spunem la 13 sa se inchida
-            pthread_cond_signal(s->cond_13);
-        }
-        // asteptam ca 13 sa se inchida si sa ne notifice si pe noi sa ne inchidem
-        pthread_cond_wait(s->cond, s->mutex);
-        waiting_count--;
-        close_thread(s);
-        return NULL;
-    }
-    // in acest caz 13 nu s-a deschis inca
     if (waiting_count == 6) {
-        // verificam daca suntem threadul cu nr 6 si pentru a nu face trigger la deadlock ii spunem unui
-        // alt thread sa se inchida dupa care asteptam
-        pthread_cond_signal(s->cond);
-        pthread_cond_wait(s->cond, s->mutex);
-        waiting_count--;
-        close_thread(s);
-        return NULL;
+        pthread_cond_signal(s->cond_13);
     }
-
-    // in acest caz 13 nu s-a deschis inca si nu sunt 6 threaduri deschise deja
-    // asteptam ca cel putin 6 threaduri sa se deschida
-    //printf("___W %d \n", s->id);
     pthread_cond_wait(s->cond, s->mutex);
+   // printf("___W %d \n", s->id);
     waiting_count--;
     close_thread(s);
     return NULL;
@@ -263,13 +243,18 @@ int main()
                 for (int i = 0; i < nrThreads; i++)
                 {
                     params[i].id = i + 1;
-                    params[i].log = log;
                     params[i].waiting = 0;
+                    params[i].log = log;
                     params[i].mutex = &mutex;
                     params[i].cond = &cond;
                     params[i].cond_13 = &cond_13;
                     params[i].barrier = &barrier;
-                    pthread_create(&tids[i], NULL, thread_function_p5, &params[i]);
+
+                    if (i >= 12 && i <= 17) {
+                        pthread_create(&tids[i], NULL, thread_function_p5, &params[i]);
+                    } else {
+                        pthread_create(&tids[i], NULL, thread_function_p5plus, &params[i]);
+                    }
                 }
                 for (int i = 0; i < nrThreads; i++)
                 {
