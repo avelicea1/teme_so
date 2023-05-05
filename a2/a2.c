@@ -73,7 +73,6 @@ int is_s_13_open = 0;
 void close_thread(TH_STRUCT_P5 *s) {
     pthread_mutex_unlock(s->mutex);
     info(END,5,s->id);
-    //printf("END %d \n", s->id);
     sem_post(s->log);
 }
 
@@ -83,7 +82,6 @@ void *thread_function_p5(void *args)
     TH_STRUCT_P5 *s = (TH_STRUCT_P5 *)args;
     sem_wait(s->log);
     info(BEGIN,5,s->id);
-    //printf("BEGIN %d \n", s->id);
     pthread_mutex_lock(s->mutex);
     waiting_count++;
     
