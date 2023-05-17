@@ -38,6 +38,7 @@ int main(){
     int size = 0;
     unsigned int numberOfBytes=0;
     volatile char *sharedChar = NULL;
+    volatile char *mapFisier = NULL;
     while(1){
         char dimensiuneRequest;
         read(fd2, &dimensiuneRequest,sizeof(char));
@@ -150,7 +151,7 @@ int main(){
                 read(fd2,&fileName[i],sizeof(char));
             }
             fileName[(int)n]='\0';
-            fdFiser = open(fileName,O_RDWR);
+            fdFiser = open(fileName,O_RDONLY);
             if(fdFiser == -1){
                 char n=5;
                 char *error = "ERROR";
@@ -161,8 +162,8 @@ int main(){
             }
             size = lseek(fdFiser,0,SEEK_END);
             lseek(fdFiser,0,SEEK_SET);
-            sharedChar = (char*)mmap(NULL,size,PROT_READ,MAP_SHARED,fdFiser,0);
-            if(sharedChar == (void*)-1){
+            mapFisier = (char*)mmap(NULL,size,PROT_READ,MAP_PRIVATE,fdFiser,0);
+            if(mapFisier == (void*)-1){
                 char n=5;
                 char *error = "ERROR";
                 write(fd1,&n,sizeof(char));
@@ -197,17 +198,11 @@ int main(){
                     write(fd1,&error[i],sizeof(char));
                 }
             }else{
-                //int i=0;
-                // while(i<no_of_bytes){
-                //     printf("%d",i);
-                //     i++;
-                //     value[i] = (char)sharedChar[offset+i];
-                    
-                // }
-                // value[i]='\0';
-                // munmap((void*)sharedChar,size);
-                // memcpy((void*)sharedChar,value,no_of_bytes);
-                // n=7;
+                int i=0;
+                while(i<no_of_bytes){
+                    sharedChar[i] = mapFisier[offset+i];
+                    i++;
+                }
                 char *success = "SUCCESS";
                 write(fd1,&n,sizeof(char));
                 for(int i=0;i<n;i++){
@@ -246,9 +241,10 @@ int main(){
             }
         }
         if(strcmp(string,"EXIT")==0){
-            munmap((void*)sharedChar,size);
+            munmap((void*)mapFisier,size);
             munmap((void*)sharedChar,numberOfBytes);
             sharedChar = NULL;
+            mapFisier=NULL;
             close(shmFd);
             close(fdFiser);
             close(fd2);
