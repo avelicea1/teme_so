@@ -27,8 +27,6 @@ int main(){
     if(fd1 == -1){
         perror("Could not open my pipe!");
     }
-    
-    //write(fd1,&"07434f4e4e454354",8); //CONNECT
     char n=7;
     write(fd1,&n,sizeof(char));
     char *s = "CONNECT";
@@ -37,6 +35,7 @@ int main(){
     }
     int shmFd ;
     int fdFiser = -1;
+    int size = 0;
     unsigned int numberOfBytes=0;
     volatile char *sharedChar = NULL;
     while(1){
@@ -115,18 +114,8 @@ int main(){
             }
             unsigned int offset = 0;
             unsigned int value =0 ;
-            // char *t = NULL;
             read(fd2,&offset,sizeof(unsigned int));
-            // read(fd2,&t[0],sizeof(char));
-            // read(fd2,&t[1],sizeof(char));
-            // read(fd2,&t[2],sizeof(char));
-            // read(fd2,&t[3],sizeof(char));
-            // printf("t[0] = %d\n",t[0]);
-            // printf("t[1] = %d\n",t[1]);
-            // printf("t[2] = %d\n",t[2]);
-            // printf("t[3] = %d\n",t[3]);
             read(fd2,&value,sizeof(unsigned int));
-            // t[4]='\0';
             if(offset >= 0 && (offset+sizeof(unsigned int))<=numberOfBytes){
                 sharedChar[offset+3]=(value >> 24) & 0xFF;
                 sharedChar[offset+2]=(value >> 16) & 0xFF;
@@ -154,13 +143,14 @@ int main(){
             for(int i=0;i<nrShm;i++){
                 write(fd1,&s[i],sizeof(char));
             }
-            char n;
+            char n=0;
             char fileName[250];
             read(fd2,&n,sizeof(char));
             for(int i=0;i<(int)n;i++){
                 read(fd2,&fileName[i],sizeof(char));
             }
-            fdFiser = open(fileName,O_RDONLY);
+            fileName[(int)n]='\0';
+            fdFiser = open(fileName,O_RDWR);
             if(fdFiser == -1){
                 char n=5;
                 char *error = "ERROR";
@@ -169,21 +159,98 @@ int main(){
                     write(fd1,&error[i],sizeof(char));
                 }
             }
-            int size = lseek(fdFiser,0,SEEK_END);
+            size = lseek(fdFiser,0,SEEK_END);
             lseek(fdFiser,0,SEEK_SET);
-            sharedChar = (char*)mmap(NULL,size,PROT_READ,MAP_PRIVATE,fdFiser,0);
+            sharedChar = (char*)mmap(NULL,size,PROT_READ,MAP_SHARED,fdFiser,0);
+            if(sharedChar == (void*)-1){
+                char n=5;
+                char *error = "ERROR";
+                write(fd1,&n,sizeof(char));
+                for(int i=0;i<n;i++){
+                    write(fd1,&error[i],sizeof(char));
+                }
+            }
             n=7;
             char *success = "SUCCESS";
             write(fd1,&n,sizeof(char));
             for(int i=0;i<n;i++){
                 write(fd1,&success[i],sizeof(char));
             }
+        }
+        if(strcmp(string,"READ_FROM_FILE_OFFSET")==0){
+            char *s = "READ_FROM_FILE_OFFSET";
+            char nrShm = strlen(s);
+            write(fd1,&nrShm,sizeof(char));
+            for(int i=0;i<nrShm;i++){
+                write(fd1,&s[i],sizeof(char));
+            }
+            unsigned int offset = 0;
+            unsigned int no_of_bytes = 0;
+            read(fd2,&offset,sizeof(unsigned int));
+            read(fd2,&no_of_bytes,sizeof(unsigned int));
+            //char *value = NULL;
+            if(offset+no_of_bytes >size){
+                char n=5;
+                char *error = "ERROR";
+                write(fd1,&n,sizeof(char));
+                for(int i=0;i<n;i++){
+                    write(fd1,&error[i],sizeof(char));
+                }
+            }else{
+                //int i=0;
+                // while(i<no_of_bytes){
+                //     printf("%d",i);
+                //     i++;
+                //     value[i] = (char)sharedChar[offset+i];
+                    
+                // }
+                // value[i]='\0';
+                // munmap((void*)sharedChar,size);
+                // memcpy((void*)sharedChar,value,no_of_bytes);
+                // n=7;
+                char *success = "SUCCESS";
+                write(fd1,&n,sizeof(char));
+                for(int i=0;i<n;i++){
+                    write(fd1,&success[i],sizeof(char));
+                }
 
+            }
+        }
+        if(strcmp(string,"READ_FROM_FILE_SECTION")==0){
+            char *s = "READ_FROM_FILE_SECTION";
+            char nrShm = strlen(s);
+            write(fd1,&nrShm,sizeof(char));
+            for(int i=0;i<nrShm;i++){
+                write(fd1,&s[i],sizeof(char));
+            }
+
+            n=7;
+            char *success = "SUCCESS";
+            write(fd1,&n,sizeof(char));
+            for(int i=0;i<n;i++){
+                write(fd1,&success[i],sizeof(char));
+            }
+        }
+        if(strcmp(string,"READ_FROM_LOGICAL_SPACE_OFFSET")==0){
+            char *s = "READ_FROM_LOGICAL_SPACE_OFFSET";
+            char nrShm = strlen(s);
+            write(fd1,&nrShm,sizeof(char));
+            for(int i=0;i<nrShm;i++){
+                write(fd1,&s[i],sizeof(char));
+            }
+            n=7;
+            char *success = "SUCCESS";
+            write(fd1,&n,sizeof(char));
+            for(int i=0;i<n;i++){
+                write(fd1,&success[i],sizeof(char));
+            }
         }
         if(strcmp(string,"EXIT")==0){
+            munmap((void*)sharedChar,size);
             munmap((void*)sharedChar,numberOfBytes);
             sharedChar = NULL;
             close(shmFd);
+            close(fdFiser);
             close(fd2);
             close (fd1);
             return 0;
