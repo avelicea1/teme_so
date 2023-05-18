@@ -218,12 +218,73 @@ int main(){
             for(int i=0;i<nrShm;i++){
                 write(fd1,&s[i],sizeof(char));
             }
-
-            n=7;
-            char *success = "SUCCESS";
-            write(fd1,&n,sizeof(char));
-            for(int i=0;i<n;i++){
-                write(fd1,&success[i],sizeof(char));
+            unsigned int section_no=0;
+            unsigned int adresaCitire=0;
+            unsigned int nrDeBytes=0;
+            read(fd2,&section_no,sizeof(unsigned int));
+            read(fd2,&adresaCitire,sizeof(unsigned int));
+            read(fd2,&nrDeBytes,sizeof(unsigned int));
+            // printf("offset  = %d\n ",offset);
+            // printf("no_of_bytes = %d",nrDeBytes);
+            // unsigned char *headerSizeChar= NULL;
+            // headerSizeChar[0] = mapFisier[size-3];
+            // headerSizeChar[1] = mapFisier[size-2];
+            // headerSizeChar[2] = '\0';
+            // printf("%c \n",headerSizeChar[0]);
+            // printf("%d %d %d",size,mapFisier[size-2],mapFisier[size-3]);
+            // unsigned int headerSize = (unsigned int)((mapFisier[size-3]<<8) + mapFisier[size-2]);
+            // printf(" %d ",headerSize);
+            off_t offset_size = size - 2;
+            unsigned char *ptr = (unsigned char *)mapFisier + offset_size;
+            unsigned char penultimate_byte = *(ptr - 1);
+            unsigned char antepenultimate_byte = *(ptr - 2);
+            unsigned int headerSize = (unsigned int)((antepenultimate_byte << 8) | penultimate_byte);
+            //printf("%d\n",headerSize);
+            unsigned char *index = (unsigned char *)mapFisier +size - headerSize+1;
+            unsigned int no_of_sections = *(index);
+            //printf("no of sections = %d\n",no_of_sections);
+            index = (unsigned char *) index + 1;
+            //printf("%c\n",*(index));
+            if(section_no > no_of_sections){
+                char n=5;
+                char *error = "ERROR";
+                write(fd1,&n,sizeof(char));
+                for(int i=0;i<n;i++){
+                    write(fd1,&error[i],sizeof(char));
+                }
+            }else{
+                int i=1;
+                while(i<section_no){
+                    index = (unsigned char *) index + 24;
+                    i++;
+                    //printf("i = %d \n",i);
+                }
+                //printf("%d ",i);
+                index = (unsigned char *) index + 16;
+                //printf("%c\n",*(index));
+                unsigned char sectOffset1 = *(index);
+                unsigned char sectOffset2 = *(index +1);
+                unsigned char sectOffset3 = *(index+ 2);
+                unsigned char sectOffset4 = *(index+ 3);
+                unsigned int sectOffset = (unsigned int)((sectOffset4<<24) | (sectOffset3<<16) | (sectOffset2<<8) |sectOffset1);
+                //printf("%d\n",sectOffset);
+                //unsigned char *pointerSectiune = (unsigned char*)mapFisier + sectOffset+offset;
+                int j=0;
+                // printf("offset  = %d\n ",offset);
+                // printf("no_of_bytes = %d",no_of_bytes);
+                while(j<=nrDeBytes){
+                    //printf("%c",mapFisier[sectOffset+adresaCitire+j]);
+                    sharedChar[j] = mapFisier[sectOffset+adresaCitire+j];
+                    //printf("%c",sharedChar[j]);
+                    j++;
+                }
+                //printf("%d\n",j);
+                n=7;
+                char *success = "SUCCESS";
+                write(fd1,&n,sizeof(char));
+                for(int i=0;i<n;i++){
+                    write(fd1,&success[i],sizeof(char));
+                }
             }
         }
         if(strcmp(string,"READ_FROM_LOGICAL_SPACE_OFFSET")==0){
