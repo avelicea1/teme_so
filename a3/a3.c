@@ -234,15 +234,18 @@ int main(){
             // printf("%d %d %d",size,mapFisier[size-2],mapFisier[size-3]);
             // unsigned int headerSize = (unsigned int)((mapFisier[size-3]<<8) + mapFisier[size-2]);
             // printf(" %d ",headerSize);
-            off_t offset_size = size - 2;
+            off_t offset_size = size - 1;
             unsigned char *ptr = (unsigned char *)mapFisier + offset_size;
             unsigned char penultimate_byte = *(ptr - 1);
             unsigned char antepenultimate_byte = *(ptr - 2);
-            unsigned int headerSize = (unsigned int)((antepenultimate_byte << 8) | penultimate_byte);
-            //printf("%d\n",headerSize);
+            unsigned int headerSize = (unsigned int)penultimate_byte;
+            headerSize = headerSize <<8;
+            headerSize = headerSize | (unsigned int)antepenultimate_byte;
+            printf("%x\n",headerSize);
             unsigned char *index = (unsigned char *)mapFisier +size - headerSize+1;
-            unsigned int no_of_sections = *(index);
-            //printf("no of sections = %d\n",no_of_sections);
+            unsigned int no_of_sections = 0;
+            no_of_sections  =*(index);
+            printf("no of sections = %d\n",no_of_sections);
             index = (unsigned char *) index + 1;
             //printf("%c\n",*(index));
             if(section_no > no_of_sections){
