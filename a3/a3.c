@@ -347,7 +347,12 @@ int main(){
                     aux_offset = sectOffset;
                     break;
                 }else{
-                size_logic = ((sectSize /3072)+1)*3072;
+                    if(sectSize % 3072 ==0){
+                        size_logic +=sectSize;
+                    }else{
+                        size_logic += ((sectSize /3072)+1)*3072;
+                    }
+                    
                 }
                 //printf("size_logic = %d",size_logic);
                 // if(logical_offset == sectSize/i){
@@ -355,12 +360,15 @@ int main(){
                 //     aux_offset = sectOffset;
                 //     // aux_section = i;
                 // }
+                printf("size_logic %d\n",size_logic);
+                printf("size sectiune %d\n",sectSize);
                 logical_index = (unsigned char *)logical_index +4;
                 i++;
             }
             aux_offset += logical_offset - size_logic;
+            printf("size_logic %d\n",size_logic);
             int j=0;
-            while(j<nrBytesDinSectiune){
+            while(j<=nrBytesDinSectiune){
                 sharedChar[j]=mapFisier[aux_offset +j];
                 j++; 
             }
